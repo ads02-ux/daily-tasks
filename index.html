@@ -1373,7 +1373,7 @@ unsubs.push(db.collection("users").orderBy("firstJoined").onSnapshot(function(sn
 var ids=[];
 snap.docs.forEach(function(d){ var x=d.data()||{}; ids.push(d.id); state.profiles[d.id]={name:x.name||"",avatarUrl:x.photo||""}; });
 if(ids.indexOf(state.me)<0) ids.unshift(state.me);
-setPeople(ids);
+setPeople(ids); renderNamed();
 }, function(){ setPeople([state.me]); }));
 if(state.isOwner){
 unsubs.push(db.doc("config/team").onSnapshot(function(s){ teamEmails=((s.exists&&s.data().emails)||[]).slice(); renderTeamMgr(); }, function(){}));

@@ -733,7 +733,7 @@ return o;
 var SAMPLES=buildSamples();
 function showingSamples(){
 if(state.view==="team" || state.migrating || !isMine()) return false;
-if(state.usingDb && !P(state.viewing).loaded) return false;
+if(state.usingDb) return false;
 return !state.everWrote && realCount()===0 && routineCount()===0;
 }
 function realCount(){ return Object.keys(state.tasks).length; }
@@ -1365,7 +1365,7 @@ $("btn-team-mgr").hidden=!state.isOwner;
 $("btn-logout").hidden=!!user.named;
 // register / refresh my profile (only name + photo are shared with the team)
 var prof={name:user.displayName||"",photo:user.photoURL||"",email:(user.email||"").toLowerCase()};
-if(!user.named) db.doc(base).get().then(function(s){
+if(!user.named && !user.isAnonymous) db.doc(base).get().then(function(s){
 if(s.exists && s.data().firstJoined) return db.doc(base).set(prof,{merge:true});
 prof.firstJoined=Date.now(); return db.doc(base).set(prof,{merge:true});
 }).catch(onWriteFail);

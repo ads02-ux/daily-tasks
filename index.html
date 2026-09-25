@@ -436,6 +436,10 @@ color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;font-we
 .tm-own{font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);padding:2px 8px;border-radius:999px}
 .tm-del{border:0;background:var(--hi-soft);color:var(--hi);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600}
 .tm-msg{font-size:12.5px;color:var(--hi);min-height:1em;margin-top:6px}
+.tm-h{font-size:14px;font-weight:600;margin:18px 0 4px}
+.nm-link{flex:1;min-width:0;font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:var(--surface)}
+.tm-copy{border:0;background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600}
+.nm-row{flex-wrap:wrap}
 [hidden]{display:none!important}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -569,6 +573,13 @@ color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;font-we
 </div>
 <div class="tm-msg" id="tm-msg"></div>
 <div id="tm-list" class="tm-list"></div>
+<h4 class="tm-h">สมาชิกแบบไม่ต้องล็อกอิน</h4>
+<p class="modal-sub" style="margin:0 0 10px">ตั้งชื่อเอง แล้วส่งลิงก์ส่วนตัวให้เขา เปิดลิงก์ครั้งเดียวก็ใช้ได้เลย ไม่ต้องใช้อีเมล (อย่าส่งลิงก์ให้คนอื่น เพราะใครมีลิงก์ก็ใช้แทนได้)</p>
+<div class="quickadd" style="margin-top:0">
+<input id="nm-input" type="text" placeholder="ชื่อ เช่น น้องปาย" aria-label="ชื่อสมาชิก">
+<button class="btn-add" id="nm-add">เพิ่ม</button>
+</div>
+<div id="nm-list" class="tm-list"></div>
 <div class="modal-acts"><button class="save" id="tm-close" style="flex:1">เสร็จ</button></div>
 </div>
 </div>
@@ -1351,9 +1362,10 @@ state.viewing=state.me; P(state.me);
 $("who-name").textContent=user.displayName||user.email;
 if(user.photoURL){ $("who-av").src=user.photoURL; $("who-av").hidden=false; }
 $("btn-team-mgr").hidden=!state.isOwner;
+$("btn-logout").hidden=!!user.named;
 // register / refresh my profile (only name + photo are shared with the team)
 var prof={name:user.displayName||"",photo:user.photoURL||"",email:(user.email||"").toLowerCase()};
-db.doc(base).get().then(function(s){
+if(!user.named) db.doc(base).get().then(function(s){
 if(s.exists && s.data().firstJoined) return db.doc(base).set(prof,{merge:true});
 prof.firstJoined=Date.now(); return db.doc(base).set(prof,{merge:true});
 }).catch(onWriteFail);
@@ -1365,10 +1377,38 @@ setPeople(ids);
 }, function(){ setPeople([state.me]); }));
 if(state.isOwner){
 unsubs.push(db.doc("config/team").onSnapshot(function(s){ teamEmails=((s.exists&&s.data().emails)||[]).slice(); renderTeamMgr(); }, function(){}));
+unsubs.push(db.collection("secrets").onSnapshot(function(s){ namedList=s.docs.map(function(d){ return {id:d.id,key:(d.data()||{}).key}; }); renderNamed(); }, function(){}));
 }
 setPeople([state.me]);
 showScreen("app");
 render();
+}
+// ---- named members (no login, personal link) ----
+var namedList=[];
+function joinLink(m){ return location.origin+location.pathname+"?join="+m.id+"."+m.key; }
+function renderNamed(){
+var box=$("nm-list"); if(!box) return; box.innerHTML="";
+if(!namedList.length){ var e=el("div","ts"); e.textContent="ยังไม่มี"; box.appendChild(e); return; }
+namedList.forEach(function(m){
+var row=el("div","tm-row nm-row");
+var s=el("span","tm-email"); s.textContent=pName(m.id); row.appendChild(s);
+var c=el("button","tm-copy"); c.textContent="คัดลอกลิงก์";
+c.onclick=function(){ var l=joinLink(m); try{ navigator.clipboard.writeText(l).then(function(){ c.textContent="คัดลอกแล้ว ✓"; },function(){ c.textContent="คัดลอกเองด้านล่าง"; }); }catch(x){} };
+row.appendChild(c);
+var d=el("button","tm-del"); d.textContent="ลบ"; d.onclick=function(){ removeNamed(m.id); }; row.appendChild(d);
+var inp=document.createElement("input"); inp.className="nm-link"; inp.readOnly=true; inp.value=joinLink(m); inp.onclick=function(){ this.select(); }; row.appendChild(inp);
+box.appendChild(row);
+});
+}
+function randKey(){ var a=new Uint8Array(18); crypto.getRandomValues(a); return Array.prototype.map.call(a,function(b){ return ("0"+b.toString(16)).slice(-2); }).join(""); }
+function addNamed(){
+var name=($("nm-input").value||"").trim(); if(!name){ $("nm-input").focus(); return; }
+var id="m"+Date.now().toString(36)+Math.random().toString(36).slice(2,6), key=randKey();
+$("nm-input").value="";
+db.doc("secrets/"+id).set({key:key}).then(function(){ return db.doc("users/"+id).set({name:name,photo:"",firstJoined:Date.now(),named:true}); }).catch(function(e){ alertLine("เพิ่มไม่สำเร็จ: "+(e&&e.code||"")); });
+}
+function removeNamed(id){
+db.doc("secrets/"+id).delete().then(function(){ return db.doc("users/"+id).delete(); }).catch(function(e){ alertLine("ลบไม่สำเร็จ: "+(e&&e.code||"")); });
 }
 function stopApp(){
 unsubs.forEach(function(u){ try{u();}catch(e){} }); unsubs=[]; watched={};
@@ -1385,11 +1425,25 @@ $("tm-add").onclick=addTeamEmail;
 $("tm-input").addEventListener("keydown",function(e){ if(e.key==="Enter" && !e.isComposing) addTeamEmail(); });
 $("scrim4").addEventListener("click",function(e){ if(e.target===this) this.classList.remove("show"); });
 if(!FIREBASE_CONFIG){ $("login-err").textContent="ยังไม่ได้ใส่ไฟล์ firebase-config.js"; showScreen("gate-login"); $("btn-login").disabled=true; return; }
+$("nm-add").onclick=addNamed;
+$("nm-input").addEventListener("keydown",function(e){ if(e.key==="Enter" && !e.isComposing) addNamed(); });
+var JOIN=null; try{ var q=new URLSearchParams(location.search).get("join"); if(q && q.indexOf(".")>0){ JOIN={id:q.split(".")[0], key:q.split(".").slice(1).join(".")}; } }catch(x){}
 firebase.initializeApp(FIREBASE_CONFIG);
 auth=firebase.auth(); db=firebase.firestore();
 auth.onAuthStateChanged(function(user){
 stopApp();
-if(!user){ showScreen("gate-login"); return; }
+if(!user){ if(JOIN){ auth.signInAnonymously().catch(function(e){ showScreen("gate-login"); $("login-err").textContent="เข้าใช้ด้วยลิงก์ไม่สำเร็จ ("+(e&&e.code||"")+")"; }); return; } showScreen("gate-login"); return; }
+if(user.isAnonymous){
+var cl=db.doc("claims/"+user.uid);
+var p=JOIN ? cl.set({member:JOIN.id,key:JOIN.key,at:Date.now()}) : Promise.resolve();
+p.then(function(){ return cl.get(); }).then(function(s){
+if(!s.exists) throw 0;
+var mid=s.data().member;
+if(JOIN){ try{ history.replaceState(null,"",location.pathname); }catch(x){} JOIN=null; }
+return db.doc("users/"+mid).get().then(function(u){ if(!u.exists) throw 0; startApp({uid:mid,email:"",displayName:(u.data()||{}).name||"สมาชิก",photoURL:"",named:true}); });
+}).catch(function(){ JOIN=null; showScreen("gate-login"); $("login-err").textContent="ลิงก์เข้าใช้ไม่ถูกต้อง หรือถูกยกเลิกแล้ว — ขอลิงก์ใหม่จากหัวหน้า"; });
+return;
+}
 // membership check: members can read config/team; others get permission-denied
 var isOwnerUser=(user.email||"").toLowerCase()===OWNER_EMAIL;
 (isOwnerUser ? Promise.resolve() : db.doc("config/team").get()).then(function(){ startApp(user); }).catch(function(){

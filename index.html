@@ -624,6 +624,13 @@ color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;font-we
 <button class="btn-add" id="nm-add">เพิ่ม</button>
 </div>
 <div id="nm-list" class="tm-list"></div>
+<h4 class="tm-h">ลิงก์ผู้บริหาร (ดูอย่างเดียว)</h4>
+<p class="modal-sub" style="margin:0 0 10px">เปิดดูงานรายวันและเป้าหมายของทุกคนได้ทันที ไม่ต้องล็อกอิน และแก้ไขอะไรไม่ได้ · ถ้าลิงก์หลุดไปถึงคนอื่น กดลบแล้วสร้างใหม่</p>
+<div class="quickadd" style="margin-top:0">
+<input id="vw-input" type="text" placeholder="ตั้งชื่อลิงก์ เช่น ผู้บริหาร" aria-label="ชื่อลิงก์ผู้บริหาร">
+<button class="btn-add" id="vw-add">สร้างลิงก์</button>
+</div>
+<div id="vw-list" class="tm-list"></div>
 <div class="modal-acts"><button class="save" id="tm-close" style="flex:1">เสร็จ</button></div>
 </div>
 </div>
@@ -1441,12 +1448,13 @@ return chain.then(function(){ return n; });
 };
 function startApp(user){
 state.me=user.uid; state.isOwner=(user.email||"").toLowerCase()===OWNER_EMAIL;
-state.usingDb=true; state.readonly=false;
+state.usingDb=true; state.readonly=!!user.viewer; state.viewer=!!user.viewer;
 var base="users/"+state.me;
 tasksCol=db.collection(base+"/tasks");
 routinesCol=db.collection(base+"/routines");
 offDoc=db.doc(base+"/meta/dayoff");
-state.viewing=state.me; P(state.me);
+state.viewing=user.viewer?"local":state.me; P(state.me);
+if(user.viewer) state.view="team";
 $("who-name").textContent=user.displayName||user.email;
 if(user.photoURL){ $("who-av").src=user.photoURL; $("who-av").hidden=false; }
 $("btn-team-mgr").hidden=!state.isOwner;
@@ -1460,15 +1468,16 @@ prof.firstJoined=Date.now(); return db.doc(base).set(prof,{merge:true});
 unsubs.push(db.collection("users").orderBy("firstJoined").onSnapshot(function(snap){
 var ids=[];
 snap.docs.forEach(function(d){ var x=d.data()||{}; ids.push(d.id); state.profiles[d.id]={name:x.name||"",avatarUrl:x.photo||""}; });
-if(ids.indexOf(state.me)<0) ids.unshift(state.me);
+if(!state.viewer && ids.indexOf(state.me)<0) ids.unshift(state.me);
 setPeople(ids); renderNamed();
 }, function(){ setPeople([state.me]); }));
 unsubs.push(db.collection("goals").onSnapshot(function(s){ goals=s.docs.map(function(d){ var x=d.data()||{}; x.id=d.id; return x; }); if(state.view==="goals") render(); }, function(){}));
 if(state.isOwner){
 unsubs.push(db.doc("config/team").onSnapshot(function(s){ teamEmails=((s.exists&&s.data().emails)||[]).slice(); renderTeamMgr(); }, function(){}));
 unsubs.push(db.collection("secrets").onSnapshot(function(s){ namedList=s.docs.map(function(d){ return {id:d.id,key:(d.data()||{}).key}; }); renderNamed(); }, function(){}));
+unsubs.push(db.collection("vsecrets").onSnapshot(function(s){ viewerList=s.docs.map(function(d){ var x=d.data()||{}; return {id:d.id,key:x.key,name:x.name||"ผู้บริหาร",createdAt:x.createdAt||0}; }).sort(function(a,b){ return a.createdAt-b.createdAt; }); renderViewers(); }, function(){}));
 }
-setPeople([state.me]);
+if(!state.viewer) setPeople([state.me]);
 showScreen("app");
 render();
 }
@@ -1617,7 +1626,31 @@ db.doc("secrets/"+id).set({key:key}).then(function(){ return db.doc("users/"+id)
 function removeNamed(id){
 db.doc("secrets/"+id).delete().then(function(){ return db.doc("users/"+id).delete(); }).catch(function(e){ alertLine("ลบไม่สำเร็จ: "+(e&&e.code||"")); });
 }
+// ---- view-only links for executives (no login, cannot edit) ----
+var viewerList=[];
+function viewLink(v){ return location.origin+location.pathname+"?view="+v.id+"."+v.key; }
+function renderViewers(){
+var box=$("vw-list"); if(!box) return; box.innerHTML="";
+if(!viewerList.length){ var e=el("div","ts"); e.textContent="ยังไม่มี"; box.appendChild(e); return; }
+viewerList.forEach(function(v){
+var row=el("div","tm-row nm-row");
+var s=el("span","tm-email"); s.textContent=v.name; row.appendChild(s);
+var c=el("button","tm-copy"); c.textContent="คัดลอกลิงก์";
+c.onclick=function(){ try{ navigator.clipboard.writeText(viewLink(v)).then(function(){ c.textContent="คัดลอกแล้ว ✓"; },function(){ c.textContent="คัดลอกเองด้านล่าง"; }); }catch(x){} };
+row.appendChild(c);
+var d=el("button","tm-del"); d.textContent="ลบ"; d.onclick=function(){ db.doc("vsecrets/"+v.id).delete().catch(function(e){ alertLine("ลบไม่สำเร็จ: "+(e&&e.code||"")); }); }; row.appendChild(d);
+var inp=document.createElement("input"); inp.className="nm-link"; inp.readOnly=true; inp.value=viewLink(v); inp.onclick=function(){ this.select(); }; row.appendChild(inp);
+box.appendChild(row);
+});
+}
+function addViewer(){
+var name=($("vw-input").value||"").trim()||"ผู้บริหาร";
+var id="v"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+$("vw-input").value="";
+db.doc("vsecrets/"+id).set({key:randKey(),name:name,createdAt:Date.now()}).catch(function(e){ alertLine("สร้างลิงก์ไม่สำเร็จ: "+(e&&e.code||"")); });
+}
 function stopApp(){
+state.viewer=false; state.readonly=false;
 unsubs.forEach(function(u){ try{u();}catch(e){} }); unsubs=[]; watched={};
 state.people={}; state.order=[]; state.me=null; state.viewing="local"; state.profiles={}; state.everWrote=false;
 }
@@ -1633,20 +1666,33 @@ $("tm-input").addEventListener("keydown",function(e){ if(e.key==="Enter" && !e.i
 $("scrim4").addEventListener("click",function(e){ if(e.target===this) this.classList.remove("show"); });
 if(!FIREBASE_CONFIG){ $("login-err").textContent="ยังไม่ได้ใส่ไฟล์ firebase-config.js"; showScreen("gate-login"); $("btn-login").disabled=true; return; }
 $("nm-add").onclick=addNamed;
+$("vw-add").onclick=addViewer;
+$("vw-input").addEventListener("keydown",function(e){ if(e.key==="Enter" && !e.isComposing) addViewer(); });
 $("g-save").onclick=saveGoal; $("g-cancel").onclick=closeGoalForm; $("g-delete").onclick=deleteGoal; $("g-copy").onclick=copyPrevGoals;
 $("scrim5").addEventListener("click",function(e){ if(e.target===this) closeGoalForm(); });
 $("nm-input").addEventListener("keydown",function(e){ if(e.key==="Enter" && !e.isComposing) addNamed(); });
+var VIEW=null; try{ var vq=new URLSearchParams(location.search).get("view"); if(vq && vq.indexOf(".")>0){ VIEW={id:vq.split(".")[0], key:vq.split(".").slice(1).join(".")}; } }catch(x){}
 var JOIN=null; try{ var q=new URLSearchParams(location.search).get("join"); if(q && q.indexOf(".")>0){ JOIN={id:q.split(".")[0], key:q.split(".").slice(1).join(".")}; } }catch(x){}
 firebase.initializeApp(FIREBASE_CONFIG);
 auth=firebase.auth(); db=firebase.firestore();
 auth.onAuthStateChanged(function(user){
 stopApp();
-if(!user){ if(JOIN){ auth.signInAnonymously().catch(function(e){ showScreen("gate-login"); $("login-err").textContent="เข้าใช้ด้วยลิงก์ไม่สำเร็จ ("+(e&&e.code||"")+")"; }); return; } showScreen("gate-login"); return; }
+if(!user){ if(JOIN||VIEW){ auth.signInAnonymously().catch(function(e){ showScreen("gate-login"); $("login-err").textContent="เข้าใช้ด้วยลิงก์ไม่สำเร็จ ("+(e&&e.code||"")+")"; }); return; } showScreen("gate-login"); return; }
 if(user.isAnonymous){
-var cl=db.doc("claims/"+user.uid);
+var cl=db.doc("claims/"+user.uid), vc=db.doc("vclaims/"+user.uid);
+var enterViewer=function(){
+return vc.get().then(function(s){ if(!s.exists) throw 0; return db.collection("users").limit(1).get(); }).then(function(){
+if(VIEW){ try{ history.replaceState(null,"",location.pathname); }catch(x){} VIEW=null; }
+startApp({uid:"__viewer",email:"",displayName:"ดูอย่างเดียว",photoURL:"",named:true,viewer:true});
+});
+};
+if(VIEW && !JOIN){
+vc.set({viewer:VIEW.id,key:VIEW.key,at:Date.now()}).then(enterViewer).catch(function(){ VIEW=null; showScreen("gate-login"); $("login-err").textContent="ลิงก์นี้ใช้ไม่ได้ หรือถูกยกเลิกแล้ว — ขอลิงก์ใหม่จากเจ้าของ"; });
+return;
+}
 var p=JOIN ? cl.set({member:JOIN.id,key:JOIN.key,at:Date.now()}) : Promise.resolve();
 p.then(function(){ return cl.get(); }).then(function(s){
-if(!s.exists) throw 0;
+if(!s.exists){ if(!JOIN) return enterViewer(); throw 0; }
 var mid=s.data().member;
 if(JOIN){ try{ history.replaceState(null,"",location.pathname); }catch(x){} JOIN=null; }
 return db.doc("users/"+mid).get().then(function(u){ if(!u.exists) throw 0; startApp({uid:mid,email:"",displayName:(u.data()||{}).name||"สมาชิก",photoURL:"",named:true}); });

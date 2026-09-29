@@ -440,6 +440,32 @@ color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;font-we
 .tm-own{font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);padding:2px 8px;border-radius:999px}
 .tm-del{border:0;background:var(--hi-soft);color:var(--hi);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600}
 .tm-msg{font-size:12.5px;color:var(--hi);min-height:1em;margin-top:6px}
+/* ---------- goals ---------- */
+.goal{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 11px;background:var(--bg);margin-top:8px}
+.goal.can-edit{cursor:pointer}
+.goal.can-edit:hover{border-color:var(--line-strong)}
+.g-top{display:flex;align-items:baseline;gap:8px}
+.g-prod{font-weight:600;font-size:13.5px;color:var(--ink);flex:1;min-width:0;word-break:break-word}
+.g-st{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;flex:none}
+.g-st.ok{background:var(--accent-soft);color:var(--accent-ink)}
+.g-st.mid{background:var(--md-soft);color:var(--md)}
+.g-st.bad{background:var(--hi-soft);color:var(--hi)}
+.g-st.none{background:var(--surface-2);color:var(--muted)}
+.g-met{font-size:12px;color:var(--muted);margin-top:2px}
+.g-nums{font-size:13px;color:var(--ink-2);margin-top:5px}
+.g-nums b{color:var(--ink);font-family:var(--font-d);font-size:15px}
+.g-track{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden;margin-top:6px}
+.g-fill{height:100%;border-radius:999px;background:var(--accent)}
+.g-fill.mid{background:var(--md)}.g-fill.bad{background:var(--hi)}
+.g-add{width:100%;margin-top:10px;border:1.5px dashed var(--line-strong);background:transparent;color:var(--ink-2);border-radius:var(--r-sm);padding:8px;font-size:13px;font-weight:600}
+.g-add:hover{border-color:var(--accent);color:var(--accent-ink)}
+.g-empty{font-size:12.5px;color:var(--muted);margin-top:8px}
+.g-tools{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px}
+.field select,.field input[type=number]{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:var(--r-sm);padding:11px 13px;font-family:var(--font-b);font-size:14.5px}
+.g-row2{display:flex;gap:10px}.g-row2 .field{flex:1;min-width:0}
+.g-presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.g-presets button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.g-presets button:hover{border-color:var(--accent);color:var(--accent-ink)}
 .tm-h{font-size:14px;font-weight:600;margin:18px 0 4px}
 .nm-link{flex:1;min-width:0;font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:var(--surface)}
 .tm-copy{border:0;background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600}
@@ -493,6 +519,10 @@ color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;font-we
 <button id="tab-team" aria-pressed="false" hidden>
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
 ทีม
+</button>
+<button id="tab-goals" aria-pressed="false" hidden>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+เป้าหมาย
 </button>
 </div>
 </div>
@@ -563,6 +593,12 @@ color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;font-we
 <p class="team-sub">ใครทำอะไรบ้างในวันนี้ · แตะชื่อเพื่อดูงานทั้งเดือนของคนนั้น</p>
 <div class="team-list" id="team-list"></div>
 </section>
+<!-- GOALS VIEW -->
+<section id="view-goals" hidden>
+<p class="team-sub" id="goals-sub">เป้าหมายประจำเดือนของแต่ละคน · ใช้ลูกศรด้านบนเพื่อเปลี่ยนเดือน</p>
+<div class="g-tools" id="g-tools" hidden><button class="pill" id="g-copy">คัดลอกเป้าจากเดือนก่อน</button></div>
+<div class="team-list" id="goals-list"></div>
+</section>
 <div class="status-note" id="status-note"></div>
 </div>
 </div><!-- /app -->
@@ -585,6 +621,29 @@ color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;font-we
 </div>
 <div id="nm-list" class="tm-list"></div>
 <div class="modal-acts"><button class="save" id="tm-close" style="flex:1">เสร็จ</button></div>
+</div>
+</div>
+<!-- GOAL FORM -->
+<div class="scrim" id="scrim5">
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="g-title">
+<h3 id="g-title"><span id="g-heading">เพิ่มเป้าหมาย</span></h3>
+<div class="field"><label for="g-member">ของใคร</label><select id="g-member"></select></div>
+<div class="field"><label for="g-product">สินค้า</label><input type="text" id="g-product" placeholder="เช่น กาแฟเจ้าขุน"></div>
+<div class="field"><label for="g-metric">ตัววัด</label><input type="text" id="g-metric" placeholder="เช่น ยอดยิง">
+<div class="g-presets" id="g-presets"></div></div>
+<div class="g-row2">
+<div class="field"><label for="g-target">เป้า</label><input type="number" id="g-target" inputmode="decimal" step="any"></div>
+<div class="field"><label for="g-unit">หน่วย</label><input type="text" id="g-unit" placeholder="บาท / % / ออเดอร์"></div>
+</div>
+<div class="g-row2">
+<div class="field"><label for="g-actual">ทำได้จริง (ใส่ทีหลังได้)</label><input type="number" id="g-actual" inputmode="decimal" step="any"></div>
+<div class="field"><label for="g-better">แบบไหนดี</label><select id="g-better"><option value="high">ยิ่งสูงยิ่งดี</option><option value="low">ยิ่งต่ำยิ่งดี</option></select></div>
+</div>
+<div class="modal-acts">
+<button class="del-routine" id="g-delete" hidden>ลบ</button>
+<button class="cancel" id="g-cancel">ยกเลิก</button>
+<button class="save" id="g-save">บันทึก</button>
+</div>
 </div>
 </div>
 <!-- MODAL -->
@@ -763,7 +822,7 @@ return wrap;
 function refreshProfiles(){}
 // ---------- rendering ----------
 function render(){
-document.body.classList.toggle("team-wide", state.view==="team");
+document.body.classList.toggle("team-wide", state.view==="team" || state.view==="goals");
 renderHeader();
 renderBanner();
 renderMonthTitle();
@@ -772,13 +831,16 @@ renderKpis();
 $("view-day").hidden = state.view!=="day";
 $("view-month").hidden = state.view!=="month";
 $("view-team").hidden = state.view!=="team";
-if(state.view==="day") renderDay(); else if(state.view==="month") renderMonth(); else renderTeam();
+$("view-goals").hidden = state.view!=="goals";
+if(state.view==="day") renderDay(); else if(state.view==="month") renderMonth(); else if(state.view==="goals") renderGoals(); else renderTeam();
 renderStatus();
 }
 function renderHeader(){
 var mine=isMine();
-$("brand-title").textContent = state.view==="team" ? "งานรายวันทีม" : (mine ? "งานรายวันของฉัน" : "งานของ "+pName(state.viewing));
-$("btn-routines").hidden = !mine || state.view==="team";
+$("brand-title").textContent = state.view==="goals" ? "เป้าหมายรายเดือน" : state.view==="team" ? "งานรายวันทีม" : (mine ? "งานรายวันของฉัน" : "งานของ "+pName(state.viewing));
+$("btn-routines").hidden = !mine || state.view==="team" || state.view==="goals";
+$("tab-goals").hidden = !state.usingDb;
+$("tab-goals").setAttribute("aria-pressed", state.view==="goals");
 $("tab-team").hidden = !state.usingDb;
 $("tab-day").setAttribute("aria-pressed", state.view==="day");
 $("tab-month").setAttribute("aria-pressed", state.view==="month");
@@ -789,7 +851,7 @@ function renderMonthTitle(){ $("month-title").textContent=TH_MONTHS[state.calM]+
 function renderPeople(){
 var bar=$("people");
 var ids=state.order;
-if(!state.usingDb || state.view==="team" || ids.length<1 || (ids.length===1 && ids[0]===state.me)){ bar.hidden=true; return; }
+if(!state.usingDb || state.view==="team" || state.view==="goals" || ids.length<1 || (ids.length===1 && ids[0]===state.me)){ bar.hidden=true; return; }
 bar.hidden=false; bar.innerHTML="";
 var lab=el("span","people-lab"); lab.textContent="ดูงานของ"; bar.appendChild(lab);
 ids.forEach(function(uid){
@@ -846,6 +908,17 @@ wrap.appendChild(k);
 });
 }
 function renderKpis(){
+if(state.view==="goals"){
+var gl=goalsOfMonth(), hit=0, upd=0;
+gl.forEach(function(g){ var s=goalStatus(g); if(s.cls==="ok") hit++; if(g.actual!=null) upd++; });
+kpiRow([
+{label:"เป้าหมายเดือนนี้",val:gl.length},
+{label:"ถึงเป้าแล้ว",val:hit,accent:true},
+{label:"ยังไม่ถึง",val:upd-hit},
+{label:"ยังไม่อัปเดตยอด",val:gl.length-upd}
+]);
+return;
+}
 if(state.view==="team"){
 var tot=0, dn=0, active=0;
 state.order.forEach(function(uid){
@@ -1255,6 +1328,7 @@ function wire(){
 $("tab-day").onclick=function(){ setView("day"); };
 $("tab-month").onclick=function(){ setView("month"); };
 $("tab-team").onclick=function(){ setView("team"); };
+$("tab-goals").onclick=function(){ setView("goals"); };
 $("m-prev").onclick=function(){ state.calM--; if(state.calM<0){state.calM=11;state.calY--;} render(); };
 $("m-next").onclick=function(){ state.calM++; if(state.calM>11){state.calM=0;state.calY++;} render(); };
 $("d-prev").onclick=function(){ shiftDay(-1); };
@@ -1380,6 +1454,7 @@ snap.docs.forEach(function(d){ var x=d.data()||{}; ids.push(d.id); state.profile
 if(ids.indexOf(state.me)<0) ids.unshift(state.me);
 setPeople(ids); renderNamed();
 }, function(){ setPeople([state.me]); }));
+unsubs.push(db.collection("goals").onSnapshot(function(s){ goals=s.docs.map(function(d){ var x=d.data()||{}; x.id=d.id; return x; }); if(state.view==="goals") render(); }, function(){}));
 if(state.isOwner){
 unsubs.push(db.doc("config/team").onSnapshot(function(s){ teamEmails=((s.exists&&s.data().emails)||[]).slice(); renderTeamMgr(); }, function(){}));
 unsubs.push(db.collection("secrets").onSnapshot(function(s){ namedList=s.docs.map(function(d){ return {id:d.id,key:(d.data()||{}).key}; }); renderNamed(); }, function(){}));
@@ -1387,6 +1462,104 @@ unsubs.push(db.collection("secrets").onSnapshot(function(s){ namedList=s.docs.ma
 setPeople([state.me]);
 showScreen("app");
 render();
+}
+// ---- monthly goals (owner sets targets and actuals; everyone views) ----
+var goals=[];
+var G_PRESETS=[["ยอดยิง","บาท","high"],["% แอด","%","low"],["ยอดขาย","บาท","high"],["ออเดอร์","ออเดอร์","high"],["ROAS","เท่า","high"]];
+function curMonth(){ return state.calY+"-"+pad(state.calM+1); }
+function goalsOfMonth(){ var m=curMonth(); return goals.filter(function(g){ return g.month===m && state.order.indexOf(g.member)>=0; }); }
+function fmtNum(n){ if(n==null||n==="") return "–"; var x=+n; return isNaN(x)?String(n):x.toLocaleString("th-TH",{maximumFractionDigits:2}); }
+function goalStatus(g){
+if(g.actual==null || g.actual==="") return {cls:"none",txt:"ยังไม่อัปเดต",pct:0};
+var a=+g.actual, t=+g.target;
+if(g.better==="low"){
+if(a<=t) return {cls:"ok",txt:"ถึงเป้า ✓",pct:100};
+var p=a>0?Math.round(t/a*100):0; return {cls:p>=80?"mid":"bad",txt:"เกินเป้า",pct:p};
+}
+var q=t>0?Math.round(a/t*100):0;
+return {cls:q>=100?"ok":(q>=60?"mid":"bad"),txt:q+"%",pct:Math.min(100,q)};
+}
+function renderGoals(){
+var box=$("goals-list"); box.innerHTML="";
+$("g-tools").hidden=!state.isOwner;
+$("goals-sub").textContent="เป้าหมายเดือน"+TH_MONTHS[state.calM]+" "+beYear(state.calY)+" · ใช้ลูกศรด้านบนเพื่อเปลี่ยนเดือน"+(state.isOwner?" · แตะเป้าเพื่ออัปเดตยอด":"");
+var gl=goalsOfMonth();
+state.order.forEach(function(uid){
+var card=el("div","tcard");
+var head=el("div","thead");
+head.appendChild(pAvatar(uid));
+var nb=el("div","tname");
+var nm=el("div","tn"); nm.textContent=pName(uid)+(uid===state.me?" (ฉัน)":""); nb.appendChild(nm);
+var mine=gl.filter(function(g){ return g.member===uid; }).sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
+var hit=mine.filter(function(g){ return goalStatus(g).cls==="ok"; }).length;
+var sub=el("div","ts tnum"); sub.textContent=mine.length?("ถึงเป้า "+hit+" จาก "+mine.length):"ยังไม่มีเป้าหมาย"; nb.appendChild(sub);
+head.appendChild(nb); card.appendChild(head);
+mine.forEach(function(g){
+var st=goalStatus(g);
+var it=el("div","goal"+(state.isOwner?" can-edit":""));
+var top=el("div","g-top");
+var pr=el("div","g-prod"); pr.textContent=g.product||"-"; top.appendChild(pr);
+var sb=el("span","g-st "+st.cls); sb.textContent=st.txt; top.appendChild(sb);
+it.appendChild(top);
+var mt=el("div","g-met"); mt.textContent=(g.metric||"")+(g.better==="low"?" · ยิ่งต่ำยิ่งดี":""); it.appendChild(mt);
+var nu=el("div","g-nums tnum");
+var b1=document.createElement("b"); b1.textContent=fmtNum(g.actual); nu.appendChild(b1);
+nu.appendChild(document.createTextNode(" / เป้า "+fmtNum(g.target)+" "+(g.unit||"")));
+it.appendChild(nu);
+var tr=el("div","g-track"); var fl=el("div","g-fill "+st.cls); fl.style.width=st.pct+"%"; tr.appendChild(fl); it.appendChild(tr);
+if(state.isOwner) it.onclick=function(){ openGoalForm(g,uid); };
+card.appendChild(it);
+});
+if(!mine.length && !state.isOwner){ var e=el("div","g-empty"); e.textContent="ยังไม่ได้ตั้งเป้าเดือนนี้"; card.appendChild(e); }
+if(state.isOwner){ var add=el("button","g-add"); add.textContent="+ เพิ่มเป้าหมาย"; add.onclick=function(){ openGoalForm(null,uid); }; card.appendChild(add); }
+box.appendChild(card);
+});
+}
+var gEditId=null;
+function numOrNull(v){ v=(v==null?"":String(v)).trim().replace(/,/g,""); if(v==="") return null; var n=+v; return isNaN(n)?null:n; }
+function openGoalForm(g,uid){
+if(!state.isOwner) return;
+var sel=$("g-member"); sel.innerHTML="";
+state.order.forEach(function(id){ var o=document.createElement("option"); o.value=id; o.textContent=pName(id); sel.appendChild(o); });
+gEditId=g?g.id:null;
+$("g-heading").textContent=g?"แก้ไข / อัปเดตยอด":"เพิ่มเป้าหมาย เดือน"+TH_MONTHS[state.calM];
+sel.value=g?g.member:uid;
+$("g-product").value=g?(g.product||""):"";
+$("g-metric").value=g?(g.metric||""):"";
+$("g-unit").value=g?(g.unit||""):"";
+$("g-target").value=g&&g.target!=null?g.target:"";
+$("g-actual").value=g&&g.actual!=null?g.actual:"";
+$("g-better").value=g?(g.better||"high"):"high";
+$("g-delete").hidden=!g;
+var pw=$("g-presets"); pw.innerHTML="";
+G_PRESETS.forEach(function(p){ var b=el("button"); b.type="button"; b.textContent=p[0]; b.onclick=function(){ $("g-metric").value=p[0]; $("g-unit").value=p[1]; $("g-better").value=p[2]; }; pw.appendChild(b); });
+$("scrim5").classList.add("show");
+setTimeout(function(){ (g?$("g-actual"):$("g-product")).focus(); },60);
+}
+function closeGoalForm(){ $("scrim5").classList.remove("show"); }
+function saveGoal(){
+var product=$("g-product").value.trim(), metric=$("g-metric").value.trim(), target=numOrNull($("g-target").value);
+if(!product){ $("g-product").focus(); return; }
+if(!metric){ $("g-metric").focus(); return; }
+if(target==null){ $("g-target").focus(); return; }
+var body={member:$("g-member").value, product:product, metric:metric, unit:$("g-unit").value.trim(), target:target, actual:numOrNull($("g-actual").value), better:$("g-better").value, month:curMonth(), updatedAt:Date.now()};
+var ref;
+if(gEditId){ var old=goals.filter(function(x){return x.id===gEditId;})[0]; if(old){ body.month=old.month; body.createdAt=old.createdAt||Date.now(); } ref=db.doc("goals/"+gEditId); }
+else { body.createdAt=Date.now(); ref=db.doc("goals/g"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)); }
+ref.set(body).catch(function(e){ alert("บันทึกไม่สำเร็จ: "+(e&&e.code||"")); });
+closeGoalForm();
+}
+function deleteGoal(){ if(gEditId) db.doc("goals/"+gEditId).delete().catch(function(){}); closeGoalForm(); }
+function copyPrevGoals(){
+var y=state.calY, m=state.calM-1; if(m<0){ m=11; y--; }
+var prev=y+"-"+pad(m+1), cur=curMonth();
+var src=goals.filter(function(g){ return g.month===prev; });
+if(!src.length){ alert("เดือนก่อนยังไม่มีเป้าหมาย"); return; }
+var have={}; goals.filter(function(g){ return g.month===cur; }).forEach(function(g){ have[g.member+"|"+g.product+"|"+g.metric]=1; });
+var n=0;
+src.forEach(function(g){ var k=g.member+"|"+g.product+"|"+g.metric; if(have[k]) return; n++;
+db.doc("goals/g"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+n).set({member:g.member,product:g.product,metric:g.metric,unit:g.unit||"",target:g.target,actual:null,better:g.better||"high",month:cur,createdAt:Date.now()+n,updatedAt:Date.now()}).catch(function(){}); });
+if(!n) alert("เป้าจากเดือนก่อนมีอยู่ในเดือนนี้ครบแล้ว");
 }
 // ---- named members (no login, personal link) ----
 var namedList=[];
@@ -1431,6 +1604,8 @@ $("tm-input").addEventListener("keydown",function(e){ if(e.key==="Enter" && !e.i
 $("scrim4").addEventListener("click",function(e){ if(e.target===this) this.classList.remove("show"); });
 if(!FIREBASE_CONFIG){ $("login-err").textContent="ยังไม่ได้ใส่ไฟล์ firebase-config.js"; showScreen("gate-login"); $("btn-login").disabled=true; return; }
 $("nm-add").onclick=addNamed;
+$("g-save").onclick=saveGoal; $("g-cancel").onclick=closeGoalForm; $("g-delete").onclick=deleteGoal; $("g-copy").onclick=copyPrevGoals;
+$("scrim5").addEventListener("click",function(e){ if(e.target===this) closeGoalForm(); });
 $("nm-input").addEventListener("keydown",function(e){ if(e.key==="Enter" && !e.isComposing) addNamed(); });
 var JOIN=null; try{ var q=new URLSearchParams(location.search).get("join"); if(q && q.indexOf(".")>0){ JOIN={id:q.split(".")[0], key:q.split(".").slice(1).join(".")}; } }catch(x){}
 firebase.initializeApp(FIREBASE_CONFIG);

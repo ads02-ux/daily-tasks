@@ -466,6 +466,10 @@ color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;font-we
 .g-presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .g-presets button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--ink-2)}
 .g-presets button:hover{border-color:var(--accent);color:var(--accent-ink)}
+.g-sec{border-top:1px dashed var(--line);margin-top:9px;padding-top:7px}
+.g-met2{display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--muted)}
+.g-met2 span:first-child{flex:1}
+.g-hint{font-size:12px;color:var(--muted);margin:-4px 0 8px}
 .tm-h{font-size:14px;font-weight:600;margin:18px 0 4px}
 .nm-link{flex:1;min-width:0;font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:var(--surface)}
 .tm-copy{border:0;background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600}
@@ -639,6 +643,11 @@ color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;font-we
 <div class="field"><label for="g-actual">ทำได้จริง (ใส่ทีหลังได้)</label><input type="number" id="g-actual" inputmode="decimal" step="any"></div>
 <div class="field"><label for="g-better">แบบไหนดี</label><select id="g-better"><option value="high">ยิ่งสูงยิ่งดี</option><option value="low">ยิ่งต่ำยิ่งดี</option></select></div>
 </div>
+<div class="g-row2">
+<div class="field"><label for="g-pt">เป้า % ค่าแอด (ไม่เกิน)</label><input type="number" id="g-pt" inputmode="decimal" step="any" placeholder="เช่น 55"></div>
+<div class="field"><label for="g-pa">% ค่าแอดที่ทำได้</label><input type="number" id="g-pa" inputmode="decimal" step="any"></div>
+</div>
+<p class="g-hint">% ค่าแอด ยิ่งต่ำยิ่งดี · เว้นว่างได้ถ้าสินค้านี้ไม่ต้องคุม</p>
 <div class="modal-acts">
 <button class="del-routine" id="g-delete" hidden>ลบ</button>
 <button class="cancel" id="g-cancel">ยกเลิก</button>
@@ -910,7 +919,7 @@ wrap.appendChild(k);
 function renderKpis(){
 if(state.view==="goals"){
 var gl=goalsOfMonth(), hit=0, upd=0;
-gl.forEach(function(g){ var s=goalStatus(g); if(s.cls==="ok") hit++; if(g.actual!=null) upd++; });
+gl.forEach(function(g){ if(goalHit(g)) hit++; if(g.actual!=null) upd++; });
 kpiRow([
 {label:"เป้าหมายเดือนนี้",val:gl.length},
 {label:"ถึงเป้าแล้ว",val:hit,accent:true},
@@ -1479,6 +1488,14 @@ var p=a>0?Math.round(t/a*100):0; return {cls:p>=80?"mid":"bad",txt:"เกิน
 var q=t>0?Math.round(a/t*100):0;
 return {cls:q>=100?"ok":(q>=60?"mid":"bad"),txt:q+"%",pct:Math.min(100,q)};
 }
+function pctStatus(g){
+if(g.pctTarget==null || g.pctTarget==="") return null;
+if(g.pctActual==null || g.pctActual==="") return {cls:"none",txt:"ยังไม่อัปเดต",pct:0};
+var a=+g.pctActual, t=+g.pctTarget;
+if(a<=t) return {cls:"ok",txt:"ถึงเป้า ✓",pct:100};
+var p=a>0?Math.round(t/a*100):0; return {cls:p>=80?"mid":"bad",txt:"เกินเป้า",pct:p};
+}
+function goalHit(g){ var p=pctStatus(g); return goalStatus(g).cls==="ok" && (!p || p.cls==="ok"); }
 function renderGoals(){
 var box=$("goals-list"); box.innerHTML="";
 $("g-tools").hidden=!state.isOwner;
@@ -1491,7 +1508,7 @@ head.appendChild(pAvatar(uid));
 var nb=el("div","tname");
 var nm=el("div","tn"); nm.textContent=pName(uid)+(uid===state.me?" (ฉัน)":""); nb.appendChild(nm);
 var mine=gl.filter(function(g){ return g.member===uid; }).sort(function(a,b){ return (a.createdAt||0)-(b.createdAt||0); });
-var hit=mine.filter(function(g){ return goalStatus(g).cls==="ok"; }).length;
+var hit=mine.filter(function(g){ return goalHit(g); }).length;
 var sub=el("div","ts tnum"); sub.textContent=mine.length?("ถึงเป้า "+hit+" จาก "+mine.length):"ยังไม่มีเป้าหมาย"; nb.appendChild(sub);
 head.appendChild(nb); card.appendChild(head);
 mine.forEach(function(g){
@@ -1507,6 +1524,16 @@ var b1=document.createElement("b"); b1.textContent=fmtNum(g.actual); nu.appendCh
 nu.appendChild(document.createTextNode(" / เป้า "+fmtNum(g.target)+" "+(g.unit||"")));
 it.appendChild(nu);
 var tr=el("div","g-track"); var fl=el("div","g-fill "+st.cls); fl.style.width=st.pct+"%"; tr.appendChild(fl); it.appendChild(tr);
+var ps=pctStatus(g);
+if(ps){
+var sc=el("div","g-sec"); var m2=el("div","g-met2");
+var l2=el("span"); l2.textContent="% ค่าแอด · ยิ่งต่ำยิ่งดี"; m2.appendChild(l2);
+var b2=el("span","g-st "+ps.cls); b2.textContent=ps.txt; m2.appendChild(b2); sc.appendChild(m2);
+var n2=el("div","g-nums tnum"); var bb=document.createElement("b"); bb.textContent=(g.pctActual==null||g.pctActual==="")?"–":fmtNum(g.pctActual)+"%"; n2.appendChild(bb);
+n2.appendChild(document.createTextNode(" / เป้า ไม่เกิน "+fmtNum(g.pctTarget)+"%")); sc.appendChild(n2);
+var t2=el("div","g-track"); var f2=el("div","g-fill "+ps.cls); f2.style.width=ps.pct+"%"; t2.appendChild(f2); sc.appendChild(t2);
+it.appendChild(sc);
+}
 if(state.isOwner) it.onclick=function(){ openGoalForm(g,uid); };
 card.appendChild(it);
 });
@@ -1530,6 +1557,8 @@ $("g-unit").value=g?(g.unit||""):"";
 $("g-target").value=g&&g.target!=null?g.target:"";
 $("g-actual").value=g&&g.actual!=null?g.actual:"";
 $("g-better").value=g?(g.better||"high"):"high";
+$("g-pt").value=g&&g.pctTarget!=null?g.pctTarget:"";
+$("g-pa").value=g&&g.pctActual!=null?g.pctActual:"";
 $("g-delete").hidden=!g;
 var pw=$("g-presets"); pw.innerHTML="";
 G_PRESETS.forEach(function(p){ var b=el("button"); b.type="button"; b.textContent=p[0]; b.onclick=function(){ $("g-metric").value=p[0]; $("g-unit").value=p[1]; $("g-better").value=p[2]; }; pw.appendChild(b); });
@@ -1542,7 +1571,7 @@ var product=$("g-product").value.trim(), metric=$("g-metric").value.trim(), targ
 if(!product){ $("g-product").focus(); return; }
 if(!metric){ $("g-metric").focus(); return; }
 if(target==null){ $("g-target").focus(); return; }
-var body={member:$("g-member").value, product:product, metric:metric, unit:$("g-unit").value.trim(), target:target, actual:numOrNull($("g-actual").value), better:$("g-better").value, month:curMonth(), updatedAt:Date.now()};
+var body={member:$("g-member").value, product:product, metric:metric, unit:$("g-unit").value.trim(), target:target, actual:numOrNull($("g-actual").value), better:$("g-better").value, pctTarget:numOrNull($("g-pt").value), pctActual:numOrNull($("g-pa").value), month:curMonth(), updatedAt:Date.now()};
 var ref;
 if(gEditId){ var old=goals.filter(function(x){return x.id===gEditId;})[0]; if(old){ body.month=old.month; body.createdAt=old.createdAt||Date.now(); } ref=db.doc("goals/"+gEditId); }
 else { body.createdAt=Date.now(); ref=db.doc("goals/g"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)); }
@@ -1558,7 +1587,7 @@ if(!src.length){ alert("เดือนก่อนยังไม่มีเ�
 var have={}; goals.filter(function(g){ return g.month===cur; }).forEach(function(g){ have[g.member+"|"+g.product+"|"+g.metric]=1; });
 var n=0;
 src.forEach(function(g){ var k=g.member+"|"+g.product+"|"+g.metric; if(have[k]) return; n++;
-db.doc("goals/g"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+n).set({member:g.member,product:g.product,metric:g.metric,unit:g.unit||"",target:g.target,actual:null,better:g.better||"high",month:cur,createdAt:Date.now()+n,updatedAt:Date.now()}).catch(function(){}); });
+db.doc("goals/g"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+n).set({member:g.member,product:g.product,metric:g.metric,unit:g.unit||"",target:g.target,actual:null,better:g.better||"high",pctTarget:g.pctTarget==null?null:g.pctTarget,pctActual:null,month:cur,createdAt:Date.now()+n,updatedAt:Date.now()}).catch(function(){}); });
 if(!n) alert("เป้าจากเดือนก่อนมีอยู่ในเดือนนี้ครบแล้ว");
 }
 // ---- named members (no login, personal link) ----

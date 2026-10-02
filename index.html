@@ -624,8 +624,8 @@ color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;font-we
 <button class="btn-add" id="nm-add">เพิ่ม</button>
 </div>
 <div id="nm-list" class="tm-list"></div>
-<h4 class="tm-h">ลิงก์ผู้บริหาร (ดูอย่างเดียว)</h4>
-<p class="modal-sub" style="margin:0 0 10px">เปิดดูงานรายวันและเป้าหมายของทุกคนได้ทันที ไม่ต้องล็อกอิน และแก้ไขอะไรไม่ได้ · ถ้าลิงก์หลุดไปถึงคนอื่น กดลบแล้วสร้างใหม่</p>
+<h4 class="tm-h">ลิงก์ผู้บริหาร (แก้ไขได้ทุกคน)</h4>
+<p class="modal-sub" style="margin:0 0 10px">เปิดได้ทันที ไม่ต้องล็อกอิน · ดูและแก้งาน งานประจำ วันหยุด และเป้าหมายของทุกคนได้ (จัดการทีมไม่ได้) · ใครมีลิงก์ก็แก้ได้ ถ้าลิงก์หลุด กดลบแล้วสร้างใหม่</p>
 <div class="quickadd" style="margin-top:0">
 <input id="vw-input" type="text" placeholder="ตั้งชื่อลิงก์ เช่น ผู้บริหาร" aria-label="ชื่อลิงก์ผู้บริหาร">
 <button class="btn-add" id="vw-add">สร้างลิงก์</button>
@@ -787,7 +787,8 @@ function P(uid){ if(!state.people[uid]) state.people[uid]={tasks:{},routines:{},
 ["tasks","routines","dayoffs"].forEach(function(k){
 Object.defineProperty(state,k,{get:function(){return P(state.viewing)[k];},set:function(v){P(state.viewing)[k]=v;}});
 });
-function isMine(){ return !state.readonly && (state.viewing==="local" || (state.me && state.viewing===state.me)); }
+function isMine(){ if(state.editor) return !state.readonly && state.viewing!=="local" && !!state.people[state.viewing]; return !state.readonly && (state.viewing==="local" || (state.me && state.viewing===state.me)); }
+function canGoals(){ return state.isOwner || !!state.editor; }
 function withP(uid,fn){ var v=state.viewing; state.viewing=uid; try{ return fn(); } finally { state.viewing=v; } }
 var db=null, userApi=null, tasksCol=null, routinesCol=null, offDoc=null, watched={};
 // ---------- sample data (visual only, never written) ----------
@@ -1448,11 +1449,17 @@ return chain.then(function(){ return n; });
 };
 function startApp(user){
 state.me=user.uid; state.isOwner=(user.email||"").toLowerCase()===OWNER_EMAIL;
-state.usingDb=true; state.readonly=!!user.viewer; state.viewer=!!user.viewer;
+state.usingDb=true; state.readonly=false; state.viewer=!!user.viewer; state.editor=!!user.viewer;
 var base="users/"+state.me;
 tasksCol=db.collection(base+"/tasks");
 routinesCol=db.collection(base+"/routines");
 offDoc=db.doc(base+"/meta/dayoff");
+if(user.viewer){
+// executive link: every write goes to whoever is being viewed right now
+tasksCol={doc:function(id){ return db.collection("users/"+state.viewing+"/tasks").doc(id); }};
+routinesCol={doc:function(id){ return db.collection("users/"+state.viewing+"/routines").doc(id); }};
+offDoc={set:function(d){ return db.doc("users/"+state.viewing+"/meta/dayoff").set(d); }};
+}
 state.viewing=user.viewer?"local":state.me; P(state.me);
 if(user.viewer) state.view="team";
 $("who-name").textContent=user.displayName||user.email;
@@ -1507,8 +1514,8 @@ var p=a>0?Math.round(t/a*100):0; return {cls:p>=80?"mid":"bad",txt:"เกิน
 function goalHit(g){ var p=pctStatus(g); return goalStatus(g).cls==="ok" && (!p || p.cls==="ok"); }
 function renderGoals(){
 var box=$("goals-list"); box.innerHTML="";
-$("g-tools").hidden=!state.isOwner;
-$("goals-sub").textContent="เป้าหมายเดือน"+TH_MONTHS[state.calM]+" "+beYear(state.calY)+" · ใช้ลูกศรด้านบนเพื่อเปลี่ยนเดือน"+(state.isOwner?" · แตะเป้าเพื่ออัปเดตยอด":"");
+$("g-tools").hidden=!canGoals();
+$("goals-sub").textContent="เป้าหมายเดือน"+TH_MONTHS[state.calM]+" "+beYear(state.calY)+" · ใช้ลูกศรด้านบนเพื่อเปลี่ยนเดือน"+(canGoals()?" · แตะเป้าเพื่ออัปเดตยอด":"");
 var gl=goalsOfMonth();
 state.order.forEach(function(uid){
 var card=el("div","tcard");
@@ -1522,7 +1529,7 @@ var sub=el("div","ts tnum"); sub.textContent=mine.length?("ถึงเป้า
 head.appendChild(nb); card.appendChild(head);
 mine.forEach(function(g){
 var st=goalStatus(g);
-var it=el("div","goal"+(state.isOwner?" can-edit":""));
+var it=el("div","goal"+(canGoals()?" can-edit":""));
 var top=el("div","g-top");
 var pr=el("div","g-prod"); pr.textContent=g.product||"-"; top.appendChild(pr);
 var sb=el("span","g-st "+st.cls); sb.textContent=st.txt; top.appendChild(sb);
@@ -1543,18 +1550,18 @@ n2.appendChild(document.createTextNode(" / เป้า ไม่เกิน "+
 var t2=el("div","g-track"); var f2=el("div","g-fill "+ps.cls); f2.style.width=ps.pct+"%"; t2.appendChild(f2); sc.appendChild(t2);
 it.appendChild(sc);
 }
-if(state.isOwner) it.onclick=function(){ openGoalForm(g,uid); };
+if(canGoals()) it.onclick=function(){ openGoalForm(g,uid); };
 card.appendChild(it);
 });
-if(!mine.length && !state.isOwner){ var e=el("div","g-empty"); e.textContent="ยังไม่ได้ตั้งเป้าเดือนนี้"; card.appendChild(e); }
-if(state.isOwner){ var add=el("button","g-add"); add.textContent="+ เพิ่มเป้าหมาย"; add.onclick=function(){ openGoalForm(null,uid); }; card.appendChild(add); }
+if(!mine.length && !canGoals()){ var e=el("div","g-empty"); e.textContent="ยังไม่ได้ตั้งเป้าเดือนนี้"; card.appendChild(e); }
+if(canGoals()){ var add=el("button","g-add"); add.textContent="+ เพิ่มเป้าหมาย"; add.onclick=function(){ openGoalForm(null,uid); }; card.appendChild(add); }
 box.appendChild(card);
 });
 }
 var gEditId=null;
 function numOrNull(v){ v=(v==null?"":String(v)).trim().replace(/,/g,""); if(v==="") return null; var n=+v; return isNaN(n)?null:n; }
 function openGoalForm(g,uid){
-if(!state.isOwner) return;
+if(!canGoals()) return;
 var sel=$("g-member"); sel.innerHTML="";
 state.order.forEach(function(id){ var o=document.createElement("option"); o.value=id; o.textContent=pName(id); sel.appendChild(o); });
 gEditId=g?g.id:null;
@@ -1650,7 +1657,7 @@ $("vw-input").value="";
 db.doc("vsecrets/"+id).set({key:randKey(),name:name,createdAt:Date.now()}).catch(function(e){ alertLine("สร้างลิงก์ไม่สำเร็จ: "+(e&&e.code||"")); });
 }
 function stopApp(){
-state.viewer=false; state.readonly=false;
+state.viewer=false; state.editor=false; state.readonly=false;
 unsubs.forEach(function(u){ try{u();}catch(e){} }); unsubs=[]; watched={};
 state.people={}; state.order=[]; state.me=null; state.viewing="local"; state.profiles={}; state.everWrote=false;
 }
@@ -1683,7 +1690,7 @@ var cl=db.doc("claims/"+user.uid), vc=db.doc("vclaims/"+user.uid);
 var enterViewer=function(){
 return vc.get().then(function(s){ if(!s.exists) throw 0; return db.collection("users").limit(1).get(); }).then(function(){
 if(VIEW){ try{ history.replaceState(null,"",location.pathname); }catch(x){} VIEW=null; }
-startApp({uid:"__viewer",email:"",displayName:"ดูอย่างเดียว",photoURL:"",named:true,viewer:true});
+startApp({uid:"__viewer",email:"",displayName:"ผู้บริหาร",photoURL:"",named:true,viewer:true});
 });
 };
 if(VIEW && !JOIN){
